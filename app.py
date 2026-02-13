@@ -14,28 +14,16 @@ st.set_page_config(
     page_icon="💼",
 )
 
-# ── Paleta dark-mode fintech (inspirada em Revolut/XP) ──────────────────────
-# Backgrounds: #0E1117 (main), #161B22 (sidebar/cards) — nunca branco
-# Referência: https://colorswall.com/palette/6595
+# ── Paleta de cores (funciona em dark e light mode) ─────────────────────────
 COLORS = {
-    "bg_main": "#0E1117",
-    "bg_surface": "#161B22",
-    "bg_card": "#1C2333",
-    "border": "#30363D",
-    "text": "#E6EDF3",
-    "text_muted": "#8B949E",
     "primary": "#58A6FF",      # azul claro (links/destaque)
     "secondary": "#6DCEAA",    # verde menta
     "positive": "#3FB950",     # verde ganho
     "negative": "#F85149",     # vermelho perda
     "warning": "#D29922",      # dourado alerta
-    "accent1": "#58A6FF",      # azul
-    "accent2": "#6DCEAA",      # verde menta
-    "accent3": "#D2A8FF",      # lilás
-    "accent4": "#F0883E",      # laranja suave
 }
 
-# Sequência de cores suaves para gráficos em dark mode
+# Sequência de cores suaves para gráficos
 CHART_PALETTE = [
     "#58A6FF",  # azul claro
     "#6DCEAA",  # verde menta
@@ -51,64 +39,47 @@ CHART_PALETTE = [
     "#BBDAFA",  # azul gelo
 ]
 
-# Template Plotly para dark mode (aplica em todos os gráficos)
+# Template Plotly (bg transparente = adapta ao tema do Streamlit)
 # separators=",." → decimal=comma, thousands=dot (padrão BR)
 PLOTLY_LAYOUT = dict(
     plot_bgcolor="rgba(0,0,0,0)",
     paper_bgcolor="rgba(0,0,0,0)",
-    font_color=COLORS["text"],
     separators=",.",
-    xaxis=dict(gridcolor="rgba(48,54,61,0.6)", zerolinecolor="rgba(48,54,61,0.8)"),
-    yaxis=dict(gridcolor="rgba(48,54,61,0.6)", zerolinecolor="rgba(48,54,61,0.8)"),
-    hoverlabel=dict(
-        bgcolor=COLORS["bg_card"],
-        bordercolor=COLORS["border"],
-        font_color=COLORS["text"],
-        font_size=13,
-    ),
 )
 
-# ── CSS totalmente dark ──────────────────────────────────────────────────────
+# ── CSS adaptável (funciona em dark e light mode) ────────────────────────────
 st.markdown(
-    f"""
+    """
     <style>
-    /* Cards de métricas — superfície elevada */
-    div[data-testid="stMetric"] {{
-        background: {COLORS["bg_card"]};
-        border: 1px solid {COLORS["border"]};
+    /* Cards de métricas — fundo semi-transparente adapta ao tema */
+    div[data-testid="stMetric"] {
+        background: rgba(128,128,128,0.06);
+        border: 1px solid rgba(128,128,128,0.15);
         border-radius: 0.75rem;
         padding: 1rem 1.2rem;
-        border-left: 3px solid {COLORS["primary"]};
-    }}
-    div[data-testid="stMetric"] label {{
+        border-left: 3px solid #4A90D9;
+    }
+    div[data-testid="stMetric"] label {
         font-size: 0.82rem !important;
-        color: {COLORS["text_muted"]} !important;
-    }}
-    /* Sidebar — mesmo tom escuro, sem branco */
-    section[data-testid="stSidebar"] {{
-        background: {COLORS["bg_surface"]} !important;
-        border-right: 1px solid {COLORS["border"]} !important;
-    }}
-    section[data-testid="stSidebar"] > div {{
-        background: {COLORS["bg_surface"]} !important;
-    }}
-    /* Multiselect tags — azul suave em vez de vermelho */
-    span[data-baseweb="tag"] {{
-        background-color: rgba(88,166,255,0.15) !important;
-        border-color: rgba(88,166,255,0.3) !important;
-        color: {COLORS["primary"]} !important;
-    }}
-    span[data-baseweb="tag"] span[role="presentation"] {{
-        color: {COLORS["primary"]} !important;
-    }}
+        opacity: 0.7;
+    }
+    /* Multiselect tags — azul suave */
+    span[data-baseweb="tag"] {
+        background-color: rgba(74,144,217,0.15) !important;
+        border-color: rgba(74,144,217,0.3) !important;
+        color: #4A90D9 !important;
+    }
+    span[data-baseweb="tag"] span[role="presentation"] {
+        color: #4A90D9 !important;
+    }
     /* Dividers suaves */
-    hr {{
-        border-color: {COLORS["border"]} !important;
-    }}
+    hr {
+        border-color: rgba(128,128,128,0.2) !important;
+    }
     /* Expander */
-    details {{
-        border-color: {COLORS["border"]} !important;
-    }}
+    details {
+        border-color: rgba(128,128,128,0.2) !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -210,36 +181,22 @@ cat_cols, num_cols, date_cols = detect_columns(df_raw)
 
 # ── Sidebar — Filtros ────────────────────────────────────────────────────────
 with st.sidebar:
-    # Logo — branca para dark mode, preta para light mode
+    # Logo — detecta tema e mostra a versão correta
     logo_dir = os.path.join(app_dir, "img")
-    logo_dark = os.path.join(logo_dir, "logo branca xp (3).png")
-    logo_light = os.path.join(logo_dir, "logo preta xp (2).png")
+    logo_dark = os.path.join(logo_dir, "logo branca xp (3).png")   # branca → dark mode
+    logo_light = os.path.join(logo_dir, "logo preta xp (2).png")   # preta → light mode
 
-    if os.path.exists(logo_dark) and os.path.exists(logo_light):
-        with open(logo_dark, "rb") as f:
-            b64_dark = base64.b64encode(f.read()).decode()
-        with open(logo_light, "rb") as f:
-            b64_light = base64.b64encode(f.read()).decode()
+    theme_base = st.get_option("theme.base")
+    is_dark = theme_base != "light"
+    logo_file = logo_dark if is_dark else logo_light
 
+    if os.path.exists(logo_file):
+        with open(logo_file, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
         st.markdown(
-            f"""
-            <div style="text-align:center; padding: 0.5rem 0 1rem 0;">
-                <img class="logo-dark" src="data:image/png;base64,{b64_dark}"
-                     style="max-width:180px; width:100%;" />
-                <img class="logo-light" src="data:image/png;base64,{b64_light}"
-                     style="max-width:180px; width:100%; display:none;" />
-            </div>
-            <style>
-                @media (prefers-color-scheme: light) {{
-                    .logo-dark  {{ display: none !important; }}
-                    .logo-light {{ display: inline !important; }}
-                }}
-                @media (prefers-color-scheme: dark) {{
-                    .logo-dark  {{ display: inline !important; }}
-                    .logo-light {{ display: none !important; }}
-                }}
-            </style>
-            """,
+            f'<div style="text-align:center; padding: 0.5rem 0 1rem 0;">'
+            f'<img src="data:image/png;base64,{b64}" style="max-width:180px; width:100%;" />'
+            f'</div>',
             unsafe_allow_html=True,
         )
 
@@ -415,8 +372,7 @@ with col_left:
             hovermode="x unified",
             margin=dict(l=0, r=0, t=10, b=0),
             height=420,
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
-                        font=dict(color=COLORS["text"])),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
             xaxis_title="", yaxis_title="Valor (R$)",
             yaxis_tickprefix="R$ ", yaxis_tickformat=",.0f",
         )
@@ -500,7 +456,7 @@ with col_a:
             **PLOTLY_LAYOUT,
             margin=dict(l=0, r=0, t=10, b=10), height=440,
             legend=dict(orientation="v", yanchor="middle", y=0.5,
-                        xanchor="left", x=1.02, font=dict(size=10, color=COLORS["text"])),
+                        xanchor="left", x=1.02, font=dict(size=10)),
         )
         st.plotly_chart(fig3, use_container_width=True)
 
@@ -541,8 +497,7 @@ with col_b:
             xaxis_title="Rentabilidade (%)", xaxis_ticksuffix="%",
             yaxis_title="Nº de Posições",
             bargap=0.05, barmode="stack",
-            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5,
-                        font=dict(color=COLORS["text"])),
+            legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="center", x=0.5),
         )
         st.plotly_chart(fig4, use_container_width=True)
 
@@ -593,7 +548,7 @@ if "Carteira" in cat_cols and "Rentabilidade" in num_cols:
         yaxis_ticksuffix="%", showlegend=False,
     )
     fig5.update_xaxes(tickangle=-45)
-    fig5.add_hline(y=0, line_color=COLORS["border"], line_width=1)
+    fig5.add_hline(y=0, line_color="rgba(128,128,128,0.3)", line_width=1)
     st.plotly_chart(fig5, use_container_width=True)
 
 # ── Dados brutos ─────────────────────────────────────────────────────────────
