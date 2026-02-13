@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as components
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
@@ -181,59 +182,51 @@ cat_cols, num_cols, date_cols = detect_columns(df_raw)
 
 # ── Sidebar — Filtros ────────────────────────────────────────────────────────
 with st.sidebar:
-    # Logo — mostra branca no dark, preta no light
+    # Logo — JS detecta cor real do fundo e mostra a versão correta
     logo_dir = os.path.join(app_dir, "img")
     logo_dark_path = os.path.join(logo_dir, "logo branca xp (3).png")   # branca → dark mode
     logo_light_path = os.path.join(logo_dir, "logo preta xp (2).png")   # preta → light mode
 
-    theme_base = st.get_option("theme.base")
+    if os.path.exists(logo_dark_path) and os.path.exists(logo_light_path):
+        with open(logo_dark_path, "rb") as f:
+            b64_dark = base64.b64encode(f.read()).decode()
+        with open(logo_light_path, "rb") as f:
+            b64_light = base64.b64encode(f.read()).decode()
 
-    if theme_base == "light":
-        # Usuário escolheu Light explicitamente → logo preta
-        if os.path.exists(logo_light_path):
-            with open(logo_light_path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode()
-            st.markdown(
-                f'<div style="text-align:center; padding: 0.5rem 0 1rem 0;">'
-                f'<img src="data:image/png;base64,{b64}" style="max-width:180px; width:100%;" />'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-    elif theme_base == "dark":
-        # Usuário escolheu Dark explicitamente → logo branca
-        if os.path.exists(logo_dark_path):
-            with open(logo_dark_path, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode()
-            st.markdown(
-                f'<div style="text-align:center; padding: 0.5rem 0 1rem 0;">'
-                f'<img src="data:image/png;base64,{b64}" style="max-width:180px; width:100%;" />'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
-    else:
-        # Tema do sistema (None) → mostra as duas, CSS decide qual aparece
-        if os.path.exists(logo_dark_path) and os.path.exists(logo_light_path):
-            with open(logo_dark_path, "rb") as f:
-                b64_dark = base64.b64encode(f.read()).decode()
-            with open(logo_light_path, "rb") as f:
-                b64_light = base64.b64encode(f.read()).decode()
-            st.markdown(
-                f"""
-                <div style="text-align:center; padding: 0.5rem 0 1rem 0;">
-                    <img class="logo-dark" src="data:image/png;base64,{b64_dark}"
-                         style="max-width:180px; width:100%;" />
-                    <img class="logo-light" src="data:image/png;base64,{b64_light}"
-                         style="max-width:180px; width:100%; display:none;" />
-                </div>
-                <style>
-                    @media (prefers-color-scheme: light) {{
-                        .logo-dark  {{ display: none !important; }}
-                        .logo-light {{ display: inline !important; }}
-                    }}
-                </style>
-                """,
-                unsafe_allow_html=True,
-            )
+        components.html(f"""
+        <style>
+            body {{ margin:0; padding:0; background:transparent !important; }}
+            #logo-box {{ text-align:center; padding:0.5rem 0 0 0; }}
+            img {{ max-width:180px; width:100%; }}
+        </style>
+        <div id="logo-box">
+            <img id="logo-dark" src="data:image/png;base64,{b64_dark}" />
+            <img id="logo-light" src="data:image/png;base64,{b64_light}" style="display:none;" />
+        </div>
+        <script>
+        function updateLogo() {{
+            try {{
+                var sidebar = window.parent.document.querySelector('section[data-testid="stSidebar"]');
+                if (!sidebar) return;
+                var bg = window.getComputedStyle(sidebar).backgroundColor;
+                var m = bg.match(/(\\d+)/g);
+                if (!m) return;
+                var brightness = (parseInt(m[0]) + parseInt(m[1]) + parseInt(m[2])) / 3;
+                var isDark = brightness < 128;
+                document.getElementById('logo-dark').style.display = isDark ? 'block' : 'none';
+                document.getElementById('logo-light').style.display = isDark ? 'none' : 'block';
+            }} catch(e) {{}}
+        }}
+        updateLogo();
+        try {{
+            var sidebar = window.parent.document.querySelector('section[data-testid="stSidebar"]');
+            if (sidebar) {{
+                new MutationObserver(updateLogo).observe(sidebar, {{attributes:true, childList:true, subtree:true}});
+            }}
+        }} catch(e) {{}}
+        </script>
+        """, height=80)
+
 
     st.markdown("## 🔍 Filtros")
     st.caption("Ajuste os filtros para explorar os dados")
