@@ -181,24 +181,59 @@ cat_cols, num_cols, date_cols = detect_columns(df_raw)
 
 # ── Sidebar — Filtros ────────────────────────────────────────────────────────
 with st.sidebar:
-    # Logo — detecta tema e mostra a versão correta
+    # Logo — mostra branca no dark, preta no light
     logo_dir = os.path.join(app_dir, "img")
-    logo_dark = os.path.join(logo_dir, "logo branca xp (3).png")   # branca → dark mode
-    logo_light = os.path.join(logo_dir, "logo preta xp (2).png")   # preta → light mode
+    logo_dark_path = os.path.join(logo_dir, "logo branca xp (3).png")   # branca → dark mode
+    logo_light_path = os.path.join(logo_dir, "logo preta xp (2).png")   # preta → light mode
 
     theme_base = st.get_option("theme.base")
-    is_dark = theme_base != "light"
-    logo_file = logo_dark if is_dark else logo_light
 
-    if os.path.exists(logo_file):
-        with open(logo_file, "rb") as f:
-            b64 = base64.b64encode(f.read()).decode()
-        st.markdown(
-            f'<div style="text-align:center; padding: 0.5rem 0 1rem 0;">'
-            f'<img src="data:image/png;base64,{b64}" style="max-width:180px; width:100%;" />'
-            f'</div>',
-            unsafe_allow_html=True,
-        )
+    if theme_base == "light":
+        # Usuário escolheu Light explicitamente → logo preta
+        if os.path.exists(logo_light_path):
+            with open(logo_light_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            st.markdown(
+                f'<div style="text-align:center; padding: 0.5rem 0 1rem 0;">'
+                f'<img src="data:image/png;base64,{b64}" style="max-width:180px; width:100%;" />'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    elif theme_base == "dark":
+        # Usuário escolheu Dark explicitamente → logo branca
+        if os.path.exists(logo_dark_path):
+            with open(logo_dark_path, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode()
+            st.markdown(
+                f'<div style="text-align:center; padding: 0.5rem 0 1rem 0;">'
+                f'<img src="data:image/png;base64,{b64}" style="max-width:180px; width:100%;" />'
+                f'</div>',
+                unsafe_allow_html=True,
+            )
+    else:
+        # Tema do sistema (None) → mostra as duas, CSS decide qual aparece
+        if os.path.exists(logo_dark_path) and os.path.exists(logo_light_path):
+            with open(logo_dark_path, "rb") as f:
+                b64_dark = base64.b64encode(f.read()).decode()
+            with open(logo_light_path, "rb") as f:
+                b64_light = base64.b64encode(f.read()).decode()
+            st.markdown(
+                f"""
+                <div style="text-align:center; padding: 0.5rem 0 1rem 0;">
+                    <img class="logo-dark" src="data:image/png;base64,{b64_dark}"
+                         style="max-width:180px; width:100%;" />
+                    <img class="logo-light" src="data:image/png;base64,{b64_light}"
+                         style="max-width:180px; width:100%; display:none;" />
+                </div>
+                <style>
+                    @media (prefers-color-scheme: light) {{
+                        .logo-dark  {{ display: none !important; }}
+                        .logo-light {{ display: inline !important; }}
+                    }}
+                </style>
+                """,
+                unsafe_allow_html=True,
+            )
 
     st.markdown("## 🔍 Filtros")
     st.caption("Ajuste os filtros para explorar os dados")
